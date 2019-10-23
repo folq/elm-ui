@@ -2022,7 +2022,7 @@ onKey desiredCode msg =
                 |> Json.andThen decode
     in
     Internal.Attr <|
-        Html.Events.preventDefaultOn "keyup"
+        Html.Events.preventDefaultOn "keydown"
             (Json.map (\fired -> ( fired, True )) isKey)
 
 
@@ -2056,13 +2056,17 @@ onKeyLookup lookup =
                     Json.fail "No key matched"
 
                 Just msg ->
-                    Json.succeed msg
+                    Json.succeed
+                        { message = msg
+                        , preventDefault = True
+                        , stopPropagation = False
+                        }
 
         isKey =
             Json.field "key" Json.string
                 |> Json.andThen decode
     in
-    Internal.Attr <| Html.Events.on "keyup" isKey
+    Internal.Attr <| Html.Events.custom "keydown" isKey
 
 
 {-| -}
