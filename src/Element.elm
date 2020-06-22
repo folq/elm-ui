@@ -467,11 +467,11 @@ type alias Option =
     Internal.Option
 
 
-{-| Elm UI embeds two StyleSheets, one that is constant, and one that changes dynamically based on styles collected from the elments being rendered.
+{-| Elm UI embeds two StyleSheets, one that is constant, and one that changes dynamically based on styles collected from the elements being rendered.
 
 This option will stop the static/constant stylesheet from rendering.
 
-If you're embedding multiple elm-ui `layout` elements, you need to guarantee that only one is rendering the static style sheet and that it's above ll the others in the DOM tree.
+If you're embedding multiple elm-ui `layout` elements, you need to guarantee that only one is rendering the static style sheet and that it's above all the others in the DOM tree.
 
 -}
 noStaticStyleSheet : Option
@@ -645,14 +645,34 @@ wrappedRow attrs children =
                 newPadding =
                     case padded of
                         Just (Internal.Padding name t r b l) ->
-                            if r >= (x // 2) && b >= (y // 2) then
+                            if r >= (toFloat x / 2) && b >= (toFloat y / 2) then
+                                let
+                                    newTop =
+                                        t - (toFloat y / 2)
+
+                                    newRight =
+                                        r - (toFloat x / 2)
+
+                                    newBottom =
+                                        b - (toFloat y / 2)
+
+                                    newLeft =
+                                        l - (toFloat x / 2)
+                                in
                                 Just <|
-                                    paddingEach
-                                        { top = t - (y // 2)
-                                        , right = r - (x // 2)
-                                        , bottom = b - (y // 2)
-                                        , left = l - (x // 2)
-                                        }
+                                    Internal.StyleClass Flag.padding
+                                        (Internal.PaddingStyle
+                                            (Internal.paddingNameFloat
+                                                newTop
+                                                newRight
+                                                newBottom
+                                                newLeft
+                                            )
+                                            newTop
+                                            newRight
+                                            newBottom
+                                            newLeft
+                                        )
 
                             else
                                 Nothing
@@ -988,14 +1008,15 @@ tableHelper attrs config =
 
 {-| A paragraph will layout all children as wrapped, inline elements.
 
-    import Element
+    import Element exposing (el, paragraph, text)
     import Element.Font as Font
 
-    Element.paragraph []
-        [ text "lots of text ...."
-        , el [ Font.bold ] (text "this is bold")
-        , text "lots of text ...."
-        ]
+    view =
+        paragraph []
+            [ text "lots of text ...."
+            , el [ Font.bold ] (text "this is bold")
+            , text "lots of text ...."
+            ]
 
 This is really useful when you want to markup text by having some parts be bold, or some be links, or whatever you so desire.
 
@@ -1003,17 +1024,18 @@ Also, if a child element has `alignLeft` or `alignRight`, then it will be moved 
 
 This makes it particularly easy to do something like a [dropped capital](https://en.wikipedia.org/wiki/Initial).
 
-    import Element
+    import Element exposing (alignLeft, el, padding, paragraph, text)
     import Element.Font as Font
 
-    Element.paragraph []
-        [ el
-            [ alignLeft
-            , padding 5
+    view =
+        paragraph []
+            [ el
+                [ alignLeft
+                , padding 5
+                ]
+                (text "S")
+            , text "o much text ...."
             ]
-            (text "S")
-        , text "o much text ...."
-        ]
 
 Which will look something like
 
@@ -1181,11 +1203,6 @@ newTabLink attrs { url, label } =
 
 
 {-| A link to download a file.
-
-**Note** If you're using `Browser.application`, then this won't be enough to actually trigger a file download due to how `Browser.Navigation` works.
-
-[Here's a description of what needs to happen](https://github.com/elm/html/issues/175).
-
 -}
 download :
     List (Attribute msg)
@@ -1341,7 +1358,11 @@ moveLeft x =
 {-| -}
 padding : Int -> Attribute msg
 padding x =
-    Internal.StyleClass Flag.padding (Internal.PaddingStyle ("p-" ++ String.fromInt x) x x x x)
+    let
+        f =
+            toFloat x
+    in
+    Internal.StyleClass Flag.padding (Internal.PaddingStyle ("p-" ++ String.fromInt x) f f f f)
 
 
 {-| Set horizontal and vertical padding.
@@ -1349,16 +1370,27 @@ padding x =
 paddingXY : Int -> Int -> Attribute msg
 paddingXY x y =
     if x == y then
-        Internal.StyleClass Flag.padding (Internal.PaddingStyle ("p-" ++ String.fromInt x) x x x x)
+        let
+            f =
+                toFloat x
+        in
+        Internal.StyleClass Flag.padding (Internal.PaddingStyle ("p-" ++ String.fromInt x) f f f f)
 
     else
+        let
+            xFloat =
+                toFloat x
+
+            yFloat =
+                toFloat y
+        in
         Internal.StyleClass Flag.padding
             (Internal.PaddingStyle
                 ("p-" ++ String.fromInt x ++ "-" ++ String.fromInt y)
-                y
-                x
-                y
-                x
+                yFloat
+                xFloat
+                yFloat
+                xFloat
             )
 
 
@@ -1379,16 +1411,26 @@ And then just do
 paddingEach : { top : Int, right : Int, bottom : Int, left : Int } -> Attribute msg
 paddingEach { top, right, bottom, left } =
     if top == right && top == bottom && top == left then
-        Internal.StyleClass Flag.padding (Internal.PaddingStyle ("p-" ++ String.fromInt top) top top top top)
+        let
+            topFloat =
+                toFloat top
+        in
+        Internal.StyleClass Flag.padding
+            (Internal.PaddingStyle ("p-" ++ String.fromInt top)
+                topFloat
+                topFloat
+                topFloat
+                topFloat
+            )
 
     else
         Internal.StyleClass Flag.padding
             (Internal.PaddingStyle
                 (Internal.paddingName top right bottom left)
-                top
-                right
-                bottom
-                left
+                (toFloat top)
+                (toFloat right)
+                (toFloat bottom)
+                (toFloat left)
             )
 
 

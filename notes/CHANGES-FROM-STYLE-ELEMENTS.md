@@ -1,9 +1,6 @@
 # Compared to Style Elements
 
-
 This was a MAJOR rewrite of Style Elements.
-
-
 
 * **Major Performance improvement** - Style Elements v5 is much faster than v4 due to a better rendering strategy and generating very minimal html. The rewritten architecture also allows me to explore a few other optimizations, so things may get even faster than they are now.
 
@@ -119,7 +116,7 @@ Also of note, is that if something is `center`, then it will truly be in the cen
 
 - `Font.weight` has been removed in favor of `Font.extraBold`, `Font.regular`, `Font.light`, etc.  All weights from 100 - 900 are represented.
 - `Background.image` and `Background.fittedImage` will place a centered background image, instead of anchoring at the top left.
-- `fillBetween { min : Maybe Int, max : Maybe Int}` is now present for `min/max height/width` behavior.  It works like fill, but with an optional top and lower bound.
+- `fill |> minimum 20 |> maximum 200` is now present for `minWidth`, `maxWidth`, `minHeight` and `maxHeight` behavior.  It works like fill, but with an optional top and lower bound.
 - `transparent` - Set an element as transparent.  It will take up space, but otherwise be transparent and unclickable.
 - `alpha` can now be set for an element.
 - `attribute` has been renamed `htmlAttribute` to better convey what it's used for.

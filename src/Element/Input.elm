@@ -133,6 +133,11 @@ Instead of implicit submission behavior, [try making an `onEnter` event handler 
 And no one has to look up obtuse html documentation to understand the behavior of their code :).
 
 
+# File Inputs
+
+Presently, elm-ui does not expose a replacement for `<input type="file">`; in the meantime, an `Input.button` and `elm/file`'s `File.Select` may meet your needs.
+
+
 # Disabling Inputs
 
 You also might be wondering how to disable an input.
@@ -324,6 +329,8 @@ The `onPress` handler will be fired either `onClick` or when the element is focu
             { onPress = Just ClickMsg
             , label = text "My Button"
             }
+
+**Note** If you have an icon button but want it to be accessible, consider adding a [`Region.description`](Element-Region#description), which will describe the button to screen readers.
 
 -}
 button :
@@ -863,10 +870,10 @@ textHelper textInput attrs textOptions =
                     -- when things are off by a pixel or two.
                     -- (or at least when the browser *thinks* it's off by a pixel or two)
                     Just
-                        { top = max 0 (floor (toFloat t - 3))
-                        , right = max 0 (floor (toFloat r - 3))
-                        , bottom = max 0 (floor (toFloat b - 3))
-                        , left = max 0 (floor (toFloat l - 3))
+                        { top = max 0 (floor (t - 3))
+                        , right = max 0 (floor (r - 3))
+                        , bottom = max 0 (floor (b - 3))
+                        , left = max 0 (floor (l - 3))
                         }
 
                 _ ->
@@ -957,7 +964,11 @@ textHelper textInput attrs textOptions =
                             identity
                          )
                             [ Element.width Element.fill
-                            , Internal.htmlClass classes.focusedWithin
+                            , if List.any hasFocusStyle withDefaults then
+                                Internal.NoAttribute
+
+                              else
+                                Internal.htmlClass classes.focusedWithin
                             , Internal.htmlClass classes.inputMultilineWrapper
                             ]
                             ++ redistributed.parent
@@ -1005,7 +1016,12 @@ textHelper textInput attrs textOptions =
                         Internal.asEl
                         Internal.div
                         (Element.width Element.fill
-                            :: Internal.htmlClass classes.focusedWithin
+                            :: (if List.any hasFocusStyle withDefaults then
+                                    Internal.NoAttribute
+
+                                else
+                                    Internal.htmlClass classes.focusedWithin
+                               )
                             :: List.concat
                                 [ redistributed.parent
                                 , case textOptions.placeholder of
@@ -1111,7 +1127,7 @@ calcMoveToCompensateForPadding attrs =
             Internal.NoAttribute
 
         Just vSpace ->
-            Element.moveUp (toFloat vSpace / 2)
+            Element.moveUp (toFloat (floor (toFloat vSpace / 2)))
 
 
 {-| Given the list of attributes provided to `Input.multiline` or `Input.text`,
@@ -1235,17 +1251,17 @@ redistributeOver isMultiline stacked attr els =
             { els | parent = attr :: els.parent }
 
         Internal.Width width ->
-            if stacked then
-                { els | fullParent = attr :: els.fullParent }
-
-            else if isFill width then
+            if isFill width then
                 { els
                     | fullParent = attr :: els.fullParent
                     , parent = attr :: els.parent
+                    , input = attr :: els.input
                 }
 
-            else if isPixel width then
-                { els | parent = attr :: els.parent }
+            else if stacked then
+                { els
+                    | fullParent = attr :: els.fullParent
+                }
 
             else
                 { els
@@ -1300,23 +1316,36 @@ redistributeOver isMultiline stacked attr els =
                         Element.htmlAttribute
                             (Html.Attributes.style
                                 "height"
-                                ("calc(1.0em + " ++ String.fromInt (2 * min t b) ++ "px)")
+                                ("calc(1.0em + " ++ String.fromFloat (2 * min t b) ++ "px)")
                             )
 
                     newLineHeight =
                         Element.htmlAttribute
                             (Html.Attributes.style
                                 "line-height"
-                                ("calc(1.0em + " ++ String.fromInt (2 * min t b) ++ "px)")
+                                ("calc(1.0em + " ++ String.fromFloat (2 * min t b) ++ "px)")
                             )
 
+                    newTop =
+                        t - min t b
+
+                    newBottom =
+                        b - min t b
+
                     reducedVerticalPadding =
-                        Element.paddingEach
-                            { top = t - min t b
-                            , right = r
-                            , bottom = b - min t b
-                            , left = l
-                            }
+                        Internal.StyleClass Flag.padding
+                            (Internal.PaddingStyle
+                                (Internal.paddingNameFloat
+                                    newTop
+                                    r
+                                    newBottom
+                                    l
+                                )
+                                newTop
+                                r
+                                newBottom
+                                l
+                            )
                 in
                 { els
                     | parent = reducedVerticalPadding :: els.parent
@@ -1585,28 +1614,28 @@ applyLabel attrs label input =
                     Internal.element
                         Internal.asColumn
                         (Internal.NodeName "label")
-                        attrs
+                        (Internal.htmlClass classes.inputLabel :: attrs)
                         (Internal.Unkeyed [ labelElement, input ])
 
                 Below ->
                     Internal.element
                         Internal.asColumn
                         (Internal.NodeName "label")
-                        attrs
+                        (Internal.htmlClass classes.inputLabel :: attrs)
                         (Internal.Unkeyed [ input, labelElement ])
 
                 OnRight ->
                     Internal.element
                         Internal.asRow
                         (Internal.NodeName "label")
-                        attrs
+                        (Internal.htmlClass classes.inputLabel :: attrs)
                         (Internal.Unkeyed [ input, labelElement ])
 
                 OnLeft ->
                     Internal.element
                         Internal.asRow
                         (Internal.NodeName "label")
-                        attrs
+                        (Internal.htmlClass classes.inputLabel :: attrs)
                         (Internal.Unkeyed [ labelElement, input ])
 
 

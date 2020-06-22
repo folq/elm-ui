@@ -10,6 +10,7 @@ type Class
 type Rule
     = Prop String String
     | Child String (List Rule)
+    | AllChildren String (List Rule)
     | Supports ( String, String ) (List ( String, String ))
     | Descriptor String (List Rule)
     | Adjacent String (List Rule)
@@ -256,6 +257,7 @@ classes =
     , inputMultilineParent = "imlp"
     , inputMultilineFiller = "imlf"
     , inputMultilineWrapper = "implw"
+    , inputLabel = "lbl"
 
     -- link
     , link = "lnk"
@@ -556,6 +558,15 @@ renderRules (Intermediate parent) rulesToRender =
                         | others =
                             renderRules
                                 (emptyIntermediate (parent.selector ++ " > " ++ child) "")
+                                childRules
+                                :: rendered.others
+                    }
+
+                AllChildren child childRules ->
+                    { rendered
+                        | others =
+                            renderRules
+                                (emptyIntermediate (parent.selector ++ " " ++ child) "")
                                 childRules
                                 :: rendered.others
                     }
@@ -882,6 +893,9 @@ elDescription =
           --   Prop "align-self" "stretch !important"
           Prop "width" "100%"
         ]
+    , Child (dot classes.widthFillPortion)
+        [ Prop "width" "100%"
+        ]
     , Child (dot classes.widthContent)
         [ Prop "align-self" "flex-start"
         ]
@@ -947,6 +961,18 @@ baseSheet =
         ]
     , Class (dot classes.any ++ dot classes.single ++ dot classes.imageContainer)
         [ Prop "display" "block"
+        , Descriptor (dot classes.heightFill)
+            [ Child "img"
+                [ Prop "max-height" "100%"
+                , Prop "object-fit" "cover"
+                ]
+            ]
+        , Descriptor (dot classes.widthFill)
+            [ Child "img"
+                [ Prop "max-width" "100%"
+                , Prop "object-fit" "cover"
+                ]
+            ]
         ]
     , Class (dot classes.any ++ ":focus")
         [ Prop "outline" "none"
@@ -969,6 +995,7 @@ baseSheet =
         , Child (dot classes.inFront)
             [ Descriptor (dot classes.nearby)
                 [ Prop "position" "fixed"
+                , Prop "z-index" "20"
                 ]
             ]
         ]
@@ -1217,6 +1244,7 @@ baseSheet =
             -- If it's 1, it bumps up to something like 1.2
             [ Prop "line-height" "1.05"
             , Prop "background" "transparent"
+            , Prop "text-align" "inherit"
             ]
         , Descriptor (dot classes.single)
             elDescription
@@ -1343,18 +1371,20 @@ baseSheet =
             , Descriptor (dot classes.spaceEvenly)
                 [ Prop "justify-content" "space-between"
                 ]
+            , Descriptor (dot classes.inputLabel)
+                [ Prop "align-items" "baseline"
+                ]
             ]
         , Descriptor (dot classes.column)
             [ Prop "display" "flex"
             , Prop "flex-direction" "column"
             , Child (dot classes.any)
-                [ Prop "flex-basis" "0%"
-                , Descriptor (dot classes.heightExact)
-                    [ Prop "flex-basis" "auto"
-                    ]
-                , Descriptor (dot classes.column)
-                    [ Prop "flex-basis" "auto"
-                    ]
+                -- *Note* - While rows have flex-basis 0%,
+                -- which allows for the children of a row to default to their content size
+                -- This apparently is a different story for columns.
+                -- Safari has an issue if this is flex-basis: 0%, as it goes entirely to 0,
+                -- instead of the expected content size.
+                [ Prop "flex-basis" "auto"
                 ]
             , Child (dot classes.heightFill)
                 [ Prop "flex-grow" "100000"
@@ -1558,7 +1588,7 @@ baseSheet =
                             )
             ]
         , Descriptor (dot classes.inputMultiline)
-            [ Prop "white-space" "pre-wrap"
+            [ Prop "white-space" "pre-wrap !important"
             , Prop "height" "100%"
             , Prop "width" "100%"
             , Prop "background-color" "transparent"
@@ -1578,29 +1608,47 @@ baseSheet =
                 [ Prop "flex-basis" "auto" ]
             ]
         , Descriptor (dot classes.inputMultilineParent)
-            [ Prop "white-space" "pre-wrap"
+            [ Prop "white-space" "pre-wrap !important"
             , Prop "cursor" "text"
             , Child (dot classes.inputMultilineFiller)
-                [ Prop "white-space" "pre-wrap"
+                [ Prop "white-space" "pre-wrap !important"
                 , Prop "color" "transparent"
                 ]
             ]
         , Descriptor (dot classes.paragraph)
             [ Prop "display" "block"
             , Prop "white-space" "normal"
+            , Prop "overflow-wrap" "break-word"
             , Descriptor (dot classes.hasBehind)
                 [ Prop "z-index" "0"
                 , Child (dot classes.behind)
                     [ Prop "z-index" "-1"
                     ]
                 ]
-            , Child (dot classes.text)
+            , AllChildren (dot classes.text)
                 [ Prop "display" "inline"
                 , Prop "white-space" "normal"
                 ]
-            , Child (dot classes.single)
+            , AllChildren (dot classes.paragraph)
+                [ Prop "display" "inline"
+                , Descriptor "::after"
+                    [ Prop "content" "none"
+                    ]
+                , Descriptor "::before"
+                    [ Prop "content" "none"
+                    ]
+                ]
+            , AllChildren (dot classes.single)
                 [ Prop "display" "inline"
                 , Prop "white-space" "normal"
+
+                -- Inline block allows the width of the item to be set
+                -- but DOES NOT like wrapping text in a standard, normal, sane way.
+                -- We're sorta counting that if an exact width has been set,
+                -- people aren't expecting proper text wrapping for this element
+                , Descriptor (dot classes.widthExact)
+                    [ Prop "display" "inline-block"
+                    ]
                 , Descriptor (dot classes.inFront)
                     [ Prop "display" "flex"
                     ]
@@ -1623,15 +1671,9 @@ baseSheet =
                     [ Prop "display" "inline"
                     , Prop "white-space" "normal"
                     ]
-                , Child (dot classes.single)
-                    [ Child (dot classes.text)
-                        [ Prop "display" "inline"
-                        , Prop "white-space" "normal"
-                        ]
-                    ]
                 ]
             , Child (dot classes.row)
-                [ Prop "display" "inline-flex"
+                [ Prop "display" "inline"
                 ]
             , Child (dot classes.column)
                 [ Prop "display" "inline-flex"

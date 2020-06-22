@@ -79,6 +79,7 @@ module Internal.Model exposing
     , onlyStyles
     , optionsToRecord
     , paddingName
+    , paddingNameFloat
     , pageClass
     , paragraphClass
     , reduceRecursive
@@ -173,7 +174,7 @@ type Style
     | Colored String String Color
     | SpacingStyle String Int Int
     | BorderWidth String Int Int Int Int
-    | PaddingStyle String Int Int Int Int
+    | PaddingStyle String Float Float Float Float
     | GridTemplateStyle
         { spacing : ( Length, Length )
         , columns : List Length
@@ -1818,7 +1819,10 @@ staticRoot : OptionRecord -> VirtualDom.Node msg
 staticRoot opts =
     case opts.mode of
         Layout ->
-            VirtualDom.node "style" [] [ VirtualDom.text Internal.Style.rules ]
+            -- wrap the style node in a div to prevent `Dark Reader` from blowin up the dom.
+            VirtualDom.node "div"
+                []
+                [ VirtualDom.node "style" [] [ VirtualDom.text Internal.Style.rules ] ]
 
         NoStaticStyleSheet ->
             VirtualDom.text ""
@@ -1942,7 +1946,7 @@ type Spacing
 
 
 type Padding
-    = Padding String Int Int Int Int
+    = Padding String Float Float Float Float
 
 
 extractSpacingAndPadding : List (Attribute aligned msg) -> ( Maybe Padding, Maybe Spacing )
@@ -2345,10 +2349,22 @@ toStyleSheet : OptionRecord -> List Style -> VirtualDom.Node msg
 toStyleSheet options styleSheet =
     case options.mode of
         Layout ->
-            VirtualDom.node "style" [] [ VirtualDom.text (toStyleSheetString options styleSheet) ]
+            -- wrap the style node in a div to prevent `Dark Reader` from blowin up the dom.
+            VirtualDom.node "div"
+                []
+                [ VirtualDom.node "style"
+                    []
+                    [ VirtualDom.text (toStyleSheetString options styleSheet) ]
+                ]
 
         NoStaticStyleSheet ->
-            VirtualDom.node "style" [] [ VirtualDom.text (toStyleSheetString options styleSheet) ]
+            -- wrap the style node in a div to prevent `Dark Reader` from blowin up the dom.
+            VirtualDom.node "div"
+                []
+                [ VirtualDom.node "style"
+                    []
+                    [ VirtualDom.text (toStyleSheetString options styleSheet) ]
+                ]
 
         WithVirtualCss ->
             VirtualDom.node "elm-ui-rules"
@@ -2627,30 +2643,14 @@ renderStyle options maybePseudo selector props =
                         renderedProps =
                             List.foldl (renderProps False) "" props
                     in
-                    [ selector
-                        ++ "-fs:focus {"
+                    [ selector ++ "-fs:focus {" ++ renderedProps ++ "\n}"
+                    , ("." ++ classes.any ++ ":focus " ++ selector ++ "-fs  {")
                         ++ renderedProps
                         ++ "\n}"
-                    , "."
-                        ++ classes.any
-                        ++ ":focus ~ "
-                        ++ selector
-                        ++ "-fs:not(.focus)  {"
+                    , (selector ++ "-fs:focus-within {")
                         ++ renderedProps
                         ++ "\n}"
-                    , "."
-                        ++ classes.any
-                        ++ ":focus "
-                        ++ selector
-                        ++ "-fs  {"
-                        ++ renderedProps
-                        ++ "\n}"
-                    , ".focusable-parent:focus ~ "
-                        ++ "."
-                        ++ classes.any
-                        ++ " "
-                        ++ selector
-                        ++ "-fs {"
+                    , (".focusable-parent:focus ~ " ++ "." ++ classes.any ++ " " ++ selector ++ "-fs {")
                         ++ renderedProps
                         ++ "\n}"
                     ]
@@ -2857,13 +2857,13 @@ renderStyleRule options rule maybePseudo =
                 maybePseudo
                 class
                 [ Property "padding"
-                    (String.fromInt top
+                    (String.fromFloat top
                         ++ "px "
-                        ++ String.fromInt right
+                        ++ String.fromFloat right
                         ++ "px "
-                        ++ String.fromInt bottom
+                        ++ String.fromFloat bottom
                         ++ "px "
-                        ++ String.fromInt left
+                        ++ String.fromFloat left
                         ++ "px"
                     )
                 ]
@@ -3191,6 +3191,17 @@ paddingName top right bottom left =
         ++ String.fromInt bottom
         ++ "-"
         ++ String.fromInt left
+
+
+paddingNameFloat top right bottom left =
+    "pad-"
+        ++ floatClass top
+        ++ "-"
+        ++ floatClass right
+        ++ "-"
+        ++ floatClass bottom
+        ++ "-"
+        ++ floatClass left
 
 
 getStyleName : Style -> String
