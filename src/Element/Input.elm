@@ -369,7 +369,17 @@ button attrs { onPress, label } =
 
                     Just msg ->
                         Events.onClick msg
-                            :: onEnter msg
+                            :: onKeyLookup
+                                (\code ->
+                                    if code == enter then
+                                        Just msg
+
+                                    else if code == space then
+                                        Just msg
+
+                                    else
+                                        Nothing
+                                )
                             :: attrs
                )
         )
@@ -447,22 +457,24 @@ checkbox attrs { label, icon, checked, onChange } =
             ]
                 ++ attrs
     in
-    applyLabel attributes
-        label
-        (Internal.element
-            Internal.asEl
-            Internal.div
-            [ Internal.Attr <|
-                Html.Attributes.attribute "role" "checkbox"
-            , Internal.Attr <|
-                Html.Attributes.attribute "aria-checked" <|
+    applyLabel
+        (Internal.Attr (Html.Attributes.attribute "role" "checkbox")
+            :: Internal.Attr
+                (Html.Attributes.attribute "aria-checked" <|
                     if checked then
                         "true"
 
                     else
                         "false"
-            , hiddenLabelAttribute label
-            , Element.centerY
+                )
+            :: hiddenLabelAttribute label
+            :: attributes
+        )
+        label
+        (Internal.element
+            Internal.asEl
+            Internal.div
+            [ Element.centerY
             , Element.height Element.fill
             , Element.width Element.shrink
             ]
@@ -701,7 +713,7 @@ slider attributes input =
                         ("input[type=\"range\"]." ++ className ++ "::-ms-thumb")
                         thumbShadowStyle
                     )
-                , Internal.Attr (Html.Attributes.class (className ++ " focusable-parent"))
+                , Internal.Attr (Html.Attributes.class (className ++ " ui-slide-bar focusable-parent"))
                 , Internal.Attr
                     (Html.Events.onInput
                         (\str ->
@@ -767,10 +779,10 @@ slider attributes input =
                     -- This is after `attributes` because the thumb should be in front of everything.
                     ++ [ Element.behindContent <|
                             if vertical then
-                                viewVerticalThumb factor thumbAttributes trackWidth
+                                viewVerticalThumb factor (Internal.htmlClass "focusable-thumb" :: thumbAttributes) trackWidth
 
                             else
-                                viewHorizontalThumb factor thumbAttributes trackHeight
+                                viewHorizontalThumb factor (Internal.htmlClass "focusable-thumb" :: thumbAttributes) trackHeight
                        ]
                 )
                 Element.none
@@ -1553,6 +1565,8 @@ email =
 
 By default it will have a minimum height of one line and resize based on it's contents.
 
+Use `Element.spacing` to change its line-height.
+
 -}
 multiline :
     List (Attribute msg)
@@ -2095,7 +2109,11 @@ onKeyLookup lookup =
             Json.field "key" Json.string
                 |> Json.andThen decode
     in
-    Internal.Attr <| Html.Events.custom "keydown" isKey
+    -- We generally want these attached to the keydown event becaues it allows us to prevent default on things like spacebar scrolling the page.
+    -- https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles/button_role
+    Internal.Attr <|
+        Html.Events.preventDefaultOn "keydown"
+            (Json.map (\fired -> ( fired, True )) isKey)
 
 
 {-| -}
@@ -2191,7 +2209,8 @@ defaultCheckbox : Bool -> Element msg
 defaultCheckbox checked =
     Element.el
         [ Internal.htmlClass "focusable"
-        , Element.width (Element.px 14)
+        , Element.width
+            (Element.px 14)
         , Element.height (Element.px 14)
         , Font.color white
         , Element.centerY
@@ -2227,9 +2246,8 @@ defaultCheckbox checked =
 
             else
                 1
-        ]
-        (if checked then
-            Element.el
+        , Element.inFront
+            (Element.el
                 [ Border.color white
                 , Element.height (Element.px 6)
                 , Element.width (Element.px 9)
@@ -2237,6 +2255,7 @@ defaultCheckbox checked =
                 , Element.centerX
                 , Element.centerY
                 , Element.moveUp 1
+                , Element.transparent (not checked)
                 , Border.widthEach
                     { top = 0
                     , left = 2
@@ -2245,7 +2264,6 @@ defaultCheckbox checked =
                     }
                 ]
                 Element.none
-
-         else
-            Element.none
-        )
+            )
+        ]
+        Element.none
