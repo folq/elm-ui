@@ -2099,11 +2099,7 @@ onKeyLookup lookup =
                     Json.fail "No key matched"
 
                 Just msg ->
-                    Json.succeed
-                        { message = msg
-                        , preventDefault = True
-                        , stopPropagation = False
-                        }
+                    Json.succeed msg
 
         isKey =
             Json.field "key" Json.string
