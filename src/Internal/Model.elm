@@ -1478,7 +1478,9 @@ renderHeight h =
                     Single
                         cls
                         "min-height"
-                        (String.fromInt minSize ++ "px")
+                        -- This needs to be !important because we're using `min-height: min-content`
+                        -- to correct for safari's incorrect implementation of flexbox.
+                        (String.fromInt minSize ++ "px !important")
 
                 ( newFlag, newAttrs, newStyle ) =
                     renderHeight len
@@ -2242,7 +2244,11 @@ renderFocusStyle focus =
             , Just <| Property "outline" "none"
             ]
         )
-    , Style (Internal.Style.dot classes.any ++ ":focus .focusable, " ++ Internal.Style.dot classes.any ++ ".focusable:focus")
+    , Style
+        ((Internal.Style.dot classes.any ++ ":focus .focusable, ")
+            ++ (Internal.Style.dot classes.any ++ ".focusable:focus, ")
+            ++ (".ui-slide-bar:focus + " ++ Internal.Style.dot classes.any ++ " .focusable-thumb")
+        )
         (List.filterMap identity
             [ Maybe.map (\color -> Property "border-color" (formatColor color)) focus.borderColor
             , Maybe.map (\color -> Property "background-color" (formatColor color)) focus.backgroundColor
@@ -2650,7 +2656,7 @@ renderStyle options maybePseudo selector props =
                     , (selector ++ "-fs:focus-within {")
                         ++ renderedProps
                         ++ "\n}"
-                    , (".focusable-parent:focus ~ " ++ "." ++ classes.any ++ " " ++ selector ++ "-fs {")
+                    , (".ui-slide-bar:focus + " ++ Internal.Style.dot classes.any ++ " .focusable-thumb" ++ selector ++ "-fs {")
                         ++ renderedProps
                         ++ "\n}"
                     ]
